@@ -1,6 +1,5 @@
 from pathlib import Path
 from functools import cache
-from collections import defaultdict
 
 FILE_DIR = Path(__file__).parent.absolute()
 
@@ -11,58 +10,28 @@ def get_input() -> list[str]:
     return [int(x) for x in data.strip().split()]
 
 
-def part1(i_arrangement: list[int]) -> int:
-    stones = i_arrangement.copy()
-    for _ in range(25):
-        new_stones = []
-        for i in stones:
-            if i == 0:
-                new_stones.append(1)
-            elif not len(str(i)) % 2:
-                middle_index = len(str(i)) // 2
-                left = int(str(i)[:middle_index])
-                right = int(str(i)[middle_index:])
-                new_stones.append(left)
-                new_stones.append(right)
-            else:
-                new_stones.append(2024 * i)
-        stones = new_stones.copy()
-    return len(stones)
-
-
 @cache
-def blink25(val: int) -> list[int]:
-    stones = [val]
-    for _ in range(25):
-        new_stones = []
-        for i in stones:
-            if i == 0:
-                new_stones.append(1)
-            elif not len(str(i)) % 2:
-                middle_index = len(str(i)) // 2
-                left = int(str(i)[:middle_index])
-                right = int(str(i)[middle_index:])
-                new_stones.append(left)
-                new_stones.append(right)
-            else:
-                new_stones.append(2024 * i)
-        stones = new_stones.copy()
+def blink(val: int, times_left: int) -> int:
+    if times_left == 0:
+        stones = 1
+    elif val == 0:
+        stones = blink(1, times_left - 1)
+    elif len(str(val)) % 2 == 0:
+        middle_index = len(str(val)) // 2
+        left = int(str(val)[:middle_index])
+        right = int(str(val)[middle_index:])
+        stones = blink(left, times_left - 1) + blink(right, times_left - 1)
+    else:
+        stones = blink(val * 2024, times_left - 1)
     return stones
 
 
+def part1(i_arrangement: list[int]):
+    return sum([blink(stone, 25) for stone in i_arrangement])
+
+
 def part2(i_arrangement: list[int]) -> int:
-    stone_dict = defaultdict(int)
-    temp_dict = defaultdict(int)
-    for stone in i_arrangement:
-        stone_dict[stone] += 1
-    for _ in range(3):
-        for key, val in stone_dict.items():
-            new_stones = blink25(key)
-            for stone in new_stones:
-                temp_dict[stone] += 1 * val
-        stone_dict = temp_dict
-        temp_dict = defaultdict(int)
-    return sum(stone_dict.values())
+    return sum([blink(stone, 75) for stone in i_arrangement])
 
 
 if __name__ == "__main__":
