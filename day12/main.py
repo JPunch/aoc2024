@@ -49,23 +49,26 @@ class Grid:
     def in_grid(self, row: int, column: int) -> bool:
         return (0 <= row <= self.height - 1) and (0 <= column <= self.width - 1)
 
-    def find_region(self, row: int, column: int) -> set[tuple[int, int]]:
+    def find_region(self, row: int, column: int) -> tuple[set[tuple[int, int]], set[tuple[int, int]]]:
         val = self.get_value(row, column)
         region = set()
-        coords = [(row, column)]
-        last_direction = None
+        coords = [(row, column, Directions.West)]
+        edges = set()
         while coords:
-            current_coord = coords.pop()
-            if current_coord in self.coords_seen:
-                continue
+            *current_coord, direction = coords.pop()
+            current_coord = tuple(current_coord)
             current_val = self.get_value(*current_coord)
             if val == current_val:
+                if current_coord in self.coords_seen:
+                    continue
                 region.add(current_coord)
                 self.coords_seen.add(current_coord)
                 for direction in self.all_directions:
                     next_val, *next_coord = self.get_value_using_direction(*current_coord, direction)
-                    coords.append(tuple(next_coord))
-        return region
+                    coords.append(tuple([*next_coord, direction]))
+            else:
+                edges.add((*current_coord, direction))
+        return region, edges
     
     def get_perimeter(self, region_coords: set[tuple[int, int]]) -> int:
         # each coord has value 4 and loses one for each adj coord
@@ -79,25 +82,32 @@ class Grid:
             coord_vals.append(val)
         return sum(coord_vals)
     
-    def get_sides(self, region_coords: set[tuple[int, int]]) -> int:
-        # Find continuous horizontal slices, if a boundary does match up with the bordering slice add 2 sides
-        coord_vals = []
-        for coord in region_coords:
-            val = 4
-            for direction in self.all_directions:
-                next_val, *next_coord = self.get_value_using_direction(*coord, direction)
-                if tuple(next_coord) in region_coords:
-                    val -= 1
-            coord_vals.append(val)
-        return sum(coord_vals)
-    
     def fence_cost(self, row: int, column: int) -> int:
-        region = self.find_region(row, column)
-        return len(region) * self.get_perimeter(region)
+        region, edges = self.find_region(row, column)
+        return len(region) * len(edges)
     
     def sides_cost(self, row: int, column:int) -> int:
-        region = self.find_region(row, column)
-        return len(region) * self.get_perimeter(region)
+        sides = 0
+        direction_dict = defaultdict(list)
+        region, edges = self.find_region(row, column)
+        for row, column, direction in edges:
+            direction_dict[direction].append((row, column))
+        for direction in direction_dict:
+            x = defaultdict(list)
+            if direction in [Directions.East, Directions.West]:
+                for row, column in direction_dict[direction]:
+                    x[column].append(row)
+            else:
+                for row, column in direction_dict[direction]:
+                    x[row].append(column)
+            for lst in x.values():
+                r = 1
+                lst = sorted(lst)
+                for i in range(len(lst)-1):
+                    if lst[i]+1 != lst[i+1]:
+                        r += 1
+                sides += r
+        return len(region) * sides
 
 
 def part1(grid: Grid) -> int:
